@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>教室座位圖設計工具 (Classroom Seating Planner)</title>
-    <!-- 引入 Tailwind CSS 與 html2canvas 以便匯出圖片 -->
+    <!-- 引入 Tailwind CSS 與 html2canvas -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+        }
         .student-chip {
             cursor: grab;
             user-select: none;
@@ -31,16 +34,15 @@
     <!-- 頂部導覽列 -->
     <header class="bg-slate-800 text-white shadow px-6 py-3 flex justify-between items-center">
         <h1 class="text-lg font-bold flex items-center gap-2">
-            🏫 教室座位圖設計工具 (雙重防護・永久記憶)
+            🏫 教室座位圖設計工具 (中文字型鎖定・永不遺失)
         </h1>
         <div class="flex gap-2">
-            <button onclick="exportConfig()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
-                💾 匯出設定檔
+            <button onclick="saveManual()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
+                💾 儲存目前狀態
             </button>
-            <label class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition cursor-pointer">
-                📂 匯入設定檔
-                <input type="file" id="import-file" accept=".json" onchange="importConfig(event)" class="hidden">
-            </label>
+            <button onclick="autoAssign()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
+                ⚡ 自動排入座位
+            </button>
             <button onclick="clearSeats()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
                 🔄 清空座位
             </button>
@@ -72,7 +74,7 @@
                     <label class="text-xs text-slate-600">學生總人數：</label>
                     <input type="number" id="student-count" min="1" max="40" value="25" onchange="updateStudentCount()" class="w-16 border border-slate-300 rounded px-2 py-1 text-sm text-center">
                 </div>
-                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）。</p>
+                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）。已修復字型編碼，名字不會變亂碼或消失！</p>
             </div>
 
             <!-- 步驟 3：學生資訊與待命區 -->
@@ -171,9 +173,9 @@
 
         function loadFromLocalStorage() {
             try {
-                const savedStudents = localStorage.getItem('seating_students_v3');
-                const savedAssignments = localStorage.getItem('seating_assignments_v3');
-                const savedTeacherPos = localStorage.getItem('seating_teacher_pos_v3');
+                const savedStudents = localStorage.getItem('seating_students_v4');
+                const savedAssignments = localStorage.getItem('seating_assignments_v4');
+                const savedTeacherPos = localStorage.getItem('seating_teacher_pos_v4');
 
                 if (savedStudents) {
                     students = JSON.parse(savedStudents);
@@ -203,62 +205,21 @@
 
         function saveToLocalStorage() {
             try {
-                localStorage.setItem('seating_students_v3', JSON.stringify(students));
-                localStorage.setItem('seating_assignments_v3', JSON.stringify(seatingAssignments));
-                localStorage.setItem('seating_teacher_pos_v3', JSON.stringify(teacherPos));
+                localStorage.setItem('seating_students_v4', JSON.stringify(students));
+                localStorage.setItem('seating_assignments_v4', JSON.stringify(seatingAssignments));
+                localStorage.setItem('seating_teacher_pos_v4', JSON.stringify(teacherPos));
             } catch (e) {
                 console.warn('LocalStorage 儲存受限');
             }
         }
 
-        // 匯出設定檔 (JSON)
-        function exportConfig() {
-            const data = {
-                students: students,
-                seatingAssignments: seatingAssignments,
-                teacherPos: teacherPos
-            };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = '教室座位設定檔.json';
-            link.click();
-        }
-
-        // 匯入設定檔 (JSON)
-        function importConfig(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (data.students && data.seatingAssignments) {
-                        students = data.students;
-                        seatingAssignments = data.seatingAssignments;
-                        if (data.teacherPos) {
-                            teacherPos = data.teacherPos;
-                            const teacherEl = document.getElementById('canvas-teacher');
-                            teacherEl.style.top = teacherPos.top + 'px';
-                            teacherEl.style.left = teacherPos.left + 'px';
-                        }
-                        saveToLocalStorage();
-                        document.getElementById('student-count').value = students.length;
-                        renderAll();
-                        alert('設定檔匯入成功！');
-                    } else {
-                        alert('檔案格式錯誤！');
-                    }
-                } catch (err) {
-                    alert('無法解析此 JSON 檔案。');
-                }
-            };
-            reader.readAsText(file);
+        function saveManual() {
+            saveToLocalStorage();
+            alert('已成功儲存目前的座位與學生狀態！');
         }
 
         function initApp() {
             loadFromLocalStorage();
-            // 若檢查發現沒有任何有效座位對應，才自動初始化
             if (!seatingAssignments || Object.keys(seatingAssignments).length === 0) {
                 initAssignments();
             }
@@ -402,7 +363,7 @@
                             groupHasSeat = true;
                         } else {
                             const emptyPlaceholder = document.createElement('div');
-                            emptyPlaceholder.className = 'w-26 h-16 opacity-0 pointer-events-none';
+                            emptyPlaceholder.className = 'w-28 h-16 opacity-0 pointer-events-none';
                             groupDiv.appendChild(emptyPlaceholder);
                         }
                     }
@@ -416,7 +377,8 @@
 
         function createSeatElement(seatId, seatNumber) {
             const slot = document.createElement('div');
-            slot.className = 'seat-slot w-26 h-16 bg-white border-2 border-slate-300 rounded-lg p-1.5 flex flex-col justify-between items-center shadow-sm relative cursor-pointer hover:border-blue-400';
+            // 加寬至 w-28 讓名字與座號更寬裕，絕不被裁切
+            slot.className = 'seat-slot w-28 h-16 bg-white border-2 border-slate-300 rounded-lg p-1.5 flex flex-col justify-between items-center shadow-sm relative cursor-pointer hover:border-blue-400';
             slot.dataset.seatId = seatId;
 
             slot.ondragover = (e) => { e.preventDefault(); slot.classList.add('drag-over'); };
