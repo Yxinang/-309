@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>教室座位圖設計工具 (Classroom Seating Planner)</title>
+    <title>教室座位圖設計工具 (手機與電腦響應式版)</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             font-family: "Microsoft JhengHei", "Noto Sans TC", Arial, sans-serif;
+            touch-action: manipulation;
         }
         .student-chip {
             cursor: grab;
@@ -26,11 +27,11 @@
             border-color: #3b82f6;
             transform: scale(1.03);
         }
-        /* 列印與存成PDF專用樣式，確保 100% 清晰且不跑版 */
+        /* 列印與存成PDF專用樣式 */
         @media print {
             body { background: white !important; }
             header, aside { display: none !important; }
-            main { padding: 0 !important; }
+            main { padding: 0 !important; width: 100% !important; }
             #classroom-canvas { border: none !important; box-shadow: none !important; width: 100% !important; height: auto !important; background: white !important; }
         }
     </style>
@@ -38,88 +39,90 @@
 <body class="bg-slate-100 min-h-screen flex flex-col">
 
     <!-- 頂部導覽列 -->
-    <header class="bg-slate-800 text-white shadow px-6 py-3 flex justify-between items-center">
-        <h1 class="text-lg font-bold flex items-center gap-2">
-            🏫 教室座位圖設計工具 (完整功能·永久記憶)
+    <header class="bg-slate-800 text-white shadow px-4 sm:px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-2">
+        <h1 class="text-base sm:text-lg font-bold flex items-center gap-2 text-center sm:text-left">
+            🏫 教室座位圖設計工具 (手機版)
         </h1>
-        <div class="flex gap-2">
-            <button onclick="autoAssign()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
-                ⚡ 自動排入座位
+        <div class="flex flex-wrap gap-2 justify-center">
+            <button onclick="autoAssign()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded text-xs font-medium shadow transition">
+                ⚡ 自動排入
             </button>
-            <button onclick="clearSeats()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
-                🔄 清空座位
+            <button onclick="clearSeats()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded text-xs font-medium shadow transition">
+                🔄 清空
             </button>
-            <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
-                🖨️ 列印 / 存為PDF圖片
+            <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-medium shadow transition">
+                🖨️ 列印/存PDF
             </button>
         </div>
     </header>
 
-    <div class="flex flex-1 overflow-hidden">
-        <!-- 左側控制與學生待命區 -->
-        <aside class="w-96 bg-white border-r border-slate-200 flex flex-col p-4 gap-4 overflow-y-auto shadow-sm">
+    <!-- 主內容區：手機直式自動上下堆疊，電腦橫式左右並排 -->
+    <div class="flex flex-col lg:flex-row flex-1 overflow-hidden">
+        
+        <!-- 左側/上方控制與學生待命區 -->
+        <aside class="w-full lg:w-96 bg-white border-b lg:border-r border-slate-200 flex flex-col p-4 gap-3 shadow-sm max-h-96 lg:max-h-none overflow-y-auto">
             
             <!-- 步驟 1：導師桌設定 -->
-            <div class="border border-slate-200 rounded-lg p-3 bg-slate-50">
-                <h2 class="font-bold text-slate-700 text-sm mb-2">1. 導師桌位置</h2>
+            <div class="border border-slate-200 rounded-lg p-2.5 bg-slate-50">
+                <h2 class="font-bold text-slate-700 text-xs sm:text-sm mb-1.5">1. 導師桌位置</h2>
                 <div class="flex items-center gap-2">
-                    <div id="teacher-seat" class="bg-amber-200 border-2 border-amber-500 rounded p-2 text-center text-xs font-bold w-28 shadow-sm cursor-move">
-                        👨‍🏫 導師桌 (可拖曳)
+                    <div id="teacher-seat" class="bg-amber-200 border-2 border-amber-500 rounded p-1.5 text-center text-xs font-bold w-24 shadow-sm cursor-move">
+                        👨‍🏫 導師桌
                     </div>
-                    <span class="text-xs text-slate-500">可在畫布任意拖曳</span>
+                    <span class="text-[11px] text-slate-500">（可在畫布任意拖曳）</span>
                 </div>
             </div>
 
-            <!-- 步驟 2：學生人數與排版說明 -->
-            <div class="border border-slate-200 rounded-lg p-3 bg-slate-50">
-                <h2 class="font-bold text-slate-700 text-sm mb-2">2. 設定學生人數與名單</h2>
-                <div class="flex items-center gap-2 mb-2">
+            <!-- 步驟 2：學生人數與說明 -->
+            <div class="border border-slate-200 rounded-lg p-2.5 bg-slate-50">
+                <h2 class="font-bold text-slate-700 text-xs sm:text-sm mb-1.5">2. 設定學生人數</h2>
+                <div class="flex items-center gap-2 mb-1">
                     <label class="text-xs text-slate-600">學生總人數：</label>
-                    <input type="number" id="student-count" min="1" max="40" value="25" onchange="updateStudentCount()" class="w-16 border border-slate-300 rounded px-2 py-1 text-sm text-center">
+                    <input type="number" id="student-count" min="1" max="40" value="25" onchange="updateStudentCount()" class="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center">
                 </div>
-                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）。所有資料與排位會自動記憶，重新整理絕不遺失！</p>
+                <p class="text-[10px] text-slate-500">規畫：講台右側 1 位 + 後方 24 位（2-2-2 並列共 4 排）。</p>
             </div>
 
             <!-- 步驟 3：學生資訊與待命區 -->
-            <div class="border border-slate-200 rounded-lg p-3 bg-slate-50 flex-1 flex flex-col">
-                <div class="flex justify-between items-center mb-2">
-                    <h2 class="font-bold text-slate-700 text-sm">3. 學生資訊清單（可拖曳入座位）</h2>
-                    <span id="unassigned-count" class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">未入座: 0</span>
+            <div class="border border-slate-200 rounded-lg p-2.5 bg-slate-50 flex-1 flex flex-col min-h-[160px]">
+                <div class="flex justify-between items-center mb-1.5">
+                    <h2 class="font-bold text-slate-700 text-xs sm:text-sm">3. 學生名單（拖曳入座位）</h2>
+                    <span id="unassigned-count" class="text-[10px] bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">未入座: 0</span>
                 </div>
-                <p class="text-[11px] text-slate-500 mb-2">直接修改姓名、性別，或將卡片拖曳至右側座位：</p>
+                <p class="text-[10px] text-slate-500 mb-1.5">修改姓名或性別，或拖曳卡片至右側座位：</p>
                 
                 <!-- 待命學生卡片容器 -->
-                <div id="student-pool" class="flex flex-col gap-1.5 overflow-y-auto flex-1 max-h-96 pr-1 border border-dashed border-slate-300 p-2 rounded bg-white" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)" ondrop="dropToPool(event)">
+                <div id="student-pool" class="flex flex-col gap-1 overflow-y-auto flex-1 h-36 lg:h-auto pr-1 border border-dashed border-slate-300 p-1.5 rounded bg-white" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)" ondrop="dropToPool(event)">
                     <!-- 動態生成學生 -->
                 </div>
             </div>
 
         </aside>
 
-        <!-- 右側互動畫布區 -->
-        <main class="flex-1 p-6 flex flex-col items-center justify-center overflow-auto relative">
+        <!-- 右側/下方互動畫布區 -->
+        <main class="flex-1 p-4 sm:p-6 flex flex-col items-center justify-center overflow-auto relative bg-slate-100">
             
-            <!-- 教室畫布外框 -->
-            <div id="classroom-canvas" class="w-[1080px] h-[820px] bg-amber-50/70 border-4 border-slate-700 rounded-xl relative shadow-2xl overflow-hidden flex flex-col items-center pt-8 px-8 pb-8">
+            <!-- 教室畫布外框 (支援手機縮放滑動) -->
+            <div id="classroom-canvas" class="w-[1020px] h-[780px] bg-amber-50/70 border-4 border-slate-700 rounded-xl relative shadow-2xl overflow-hidden flex flex-col items-center pt-6 px-6 pb-6 scale-[0.85] sm:scale-100 origin-top">
                 
                 <!-- 黑板 -->
-                <div class="w-3/5 h-12 bg-slate-800 border-4 border-amber-900 rounded flex items-center justify-center text-white font-bold shadow-md tracking-widest text-base mb-4">
+                <div class="w-3/5 h-12 bg-slate-800 border-4 border-amber-900 rounded flex items-center justify-center text-white font-bold shadow-md tracking-widest text-sm sm:text-base mb-4">
                     黑 板 (Whiteboard)
                 </div>
 
                 <!-- 講台與講台右側特別座位區 -->
-                <div class="w-full flex justify-center items-center gap-8 mb-6 px-8 relative">
-                    <!-- 左側平衡空間佔位 -->
+                <div class="w-full flex justify-center items-center gap-6 sm:gap-8 mb-6 px-6 relative">
+                    <!-- 左側平衡空間 -->
                     <div class="w-28"></div>
 
                     <!-- 中間講台 -->
-                    <div class="w-40 h-10 bg-amber-800 rounded shadow flex items-center justify-center text-white text-sm font-bold">
+                    <div class="w-36 sm:w-40 h-9 sm:h-10 bg-amber-800 rounded shadow flex items-center justify-center text-white text-xs sm:text-sm font-bold">
                         講台
                     </div>
 
                     <!-- 右側講台旁特別座位 (Seat 1) -->
                     <div class="flex flex-col items-center">
-                        <span class="text-[11px] text-amber-900 font-bold mb-1">講台右側座位</span>
+                        <span class="text-[10px] text-amber-900 font-bold mb-1">講台右側座位</span>
                         <div id="front-special-seat-container">
                             <!-- 動態填入 Seat 1 -->
                         </div>
@@ -127,12 +130,12 @@
                 </div>
 
                 <!-- 導師桌（畫布內可自由拖曳） -->
-                <div id="canvas-teacher" class="absolute bg-amber-200 border-2 border-amber-500 rounded-lg p-3 text-center shadow-md w-32 cursor-move z-20" style="top: 130px; left: 60px;">
+                <div id="canvas-teacher" class="absolute bg-amber-200 border-2 border-amber-500 rounded-lg p-2.5 text-center shadow-md w-28 sm:w-32 cursor-move z-20" style="top: 120px; left: 50px;">
                     <div class="text-xs font-bold text-amber-900">👨‍🏫 導師桌</div>
                 </div>
 
                 <!-- 後方 24 位座位矩陣容器 -->
-                <div id="seats-grid" class="flex flex-col gap-4 items-center relative z-10 w-full px-6">
+                <div id="seats-grid" class="flex flex-col gap-3 items-center relative z-10 w-full px-4">
                     <!-- 後方 24 個座位生成於此 -->
                 </div>
 
@@ -172,13 +175,13 @@
 
         let students = [];
         let seatingAssignments = {};
-        let teacherPos = { top: 130, left: 60 };
+        let teacherPos = { top: 120, left: 50 };
 
         function loadFromLocalStorage() {
             try {
-                const savedStudents = localStorage.getItem('seating_students_v7');
-                const savedAssignments = localStorage.getItem('seating_assignments_v7');
-                const savedTeacherPos = localStorage.getItem('seating_teacher_pos_v7');
+                const savedStudents = localStorage.getItem('seating_students_v8');
+                const savedAssignments = localStorage.getItem('seating_assignments_v8');
+                const savedTeacherPos = localStorage.getItem('seating_teacher_pos_v8');
 
                 if (savedStudents) {
                     students = JSON.parse(savedStudents);
@@ -208,9 +211,9 @@
 
         function saveToLocalStorage() {
             try {
-                localStorage.setItem('seating_students_v7', JSON.stringify(students));
-                localStorage.setItem('seating_assignments_v7', JSON.stringify(seatingAssignments));
-                localStorage.setItem('seating_teacher_pos_v7', JSON.stringify(teacherPos));
+                localStorage.setItem('seating_students_v8', JSON.stringify(students));
+                localStorage.setItem('seating_assignments_v8', JSON.stringify(seatingAssignments));
+                localStorage.setItem('seating_teacher_pos_v8', JSON.stringify(teacherPos));
             } catch (e) {
                 console.warn('LocalStorage 儲存受限');
             }
@@ -269,13 +272,13 @@
             const unassignedStudents = students.filter(s => !assignedIds.includes(s.id));
 
             if (unassignedStudents.length === 0) {
-                poolEl.innerHTML = `<div class="text-xs text-slate-400 text-center py-4">所有學生皆已入座 🎉</div>`;
+                poolEl.innerHTML = `<div class="text-[11px] text-slate-400 text-center py-2">所有學生皆已入座 🎉</div>`;
                 return;
             }
 
             unassignedStudents.forEach(s => {
                 const card = document.createElement('div');
-                card.className = `student-chip bg-white border border-slate-300 rounded p-1.5 flex items-center justify-between text-xs shadow-sm hover:border-blue-400`;
+                card.className = `student-chip bg-white border border-slate-300 rounded p-1 flex items-center justify-between text-xs shadow-sm hover:border-blue-400`;
                 card.draggable = true;
                 card.ondragstart = (e) => {
                     e.dataTransfer.setData('text/plain', s.id);
@@ -284,15 +287,15 @@
                 const genderColor = s.gender === '男' ? 'text-blue-600' : 'text-rose-600';
 
                 card.innerHTML = `
-                    <div class="flex items-center gap-1.5 flex-1">
-                        <span class="font-bold text-slate-400 w-6">#${s.id}</span>
+                    <div class="flex items-center gap-1 flex-1">
+                        <span class="font-bold text-slate-400 w-5 text-[11px]">#${s.id}</span>
                         <input type="text" value="${s.name}" onclick="event.stopPropagation()" oninput="updateStudentInfo(${s.id}, 'name', this.value)" class="border rounded px-1 py-0.5 w-20 text-xs font-semibold">
-                        <select onclick="event.stopPropagation()" onchange="updateStudentInfo(${s.id}, 'gender', this.value)" class="border rounded px-1 py-0.5 text-xs ${genderColor}">
+                        <select onclick="event.stopPropagation()" onchange="updateStudentInfo(${s.id}, 'gender', this.value)" class="border rounded px-1 py-0.5 text-[11px] ${genderColor}">
                             <option value="男" ${s.gender === '男' ? 'selected' : ''}>男</option>
                             <option value="女" ${s.gender === '女' ? 'selected' : ''}>女</option>
                         </select>
                     </div>
-                    <span class="text-slate-400 text-[10px] cursor-grab">⠿</span>
+                    <span class="text-slate-400 text-[10px] cursor-grab px-1">⠿</span>
                 `;
                 poolEl.appendChild(card);
             });
@@ -326,11 +329,11 @@
 
             for (let r = 0; r < fullRowsCount; r++) {
                 const rowDiv = document.createElement('div');
-                rowDiv.className = 'flex justify-center gap-4 w-full';
+                rowDiv.className = 'flex justify-center gap-3 sm:gap-4 w-full';
 
                 for (let group = 0; group < 3; group++) {
                     const groupDiv = document.createElement('div');
-                    groupDiv.className = 'flex gap-3 bg-slate-200/60 p-2 rounded-lg border border-slate-300 shadow-sm';
+                    groupDiv.className = 'flex gap-2 sm:gap-3 bg-slate-200/60 p-1.5 sm:p-2 rounded-lg border border-slate-300 shadow-sm';
 
                     for (let i = 0; i < 2; i++) {
                         if (currentSeatIndex <= totalStudents) {
@@ -350,7 +353,7 @@
                 
                 for (let group = 0; group < 3; group++) {
                     const groupDiv = document.createElement('div');
-                    groupDiv.className = 'flex gap-3 bg-slate-200/50 p-2 rounded-lg border border-slate-300';
+                    groupDiv.className = 'flex gap-2 sm:gap-3 bg-slate-200/50 p-1.5 sm:p-2 rounded-lg border border-slate-300';
                     
                     let groupHasSeat = false;
                     for (let i = 0; i < 2; i++) {
@@ -361,7 +364,7 @@
                             groupHasSeat = true;
                         } else {
                             const emptyPlaceholder = document.createElement('div');
-                            emptyPlaceholder.className = 'w-32 h-18 opacity-0 pointer-events-none';
+                            emptyPlaceholder.className = 'w-30 sm:w-32 h-16 sm:h-18 opacity-0 pointer-events-none';
                             groupDiv.appendChild(emptyPlaceholder);
                         }
                     }
@@ -375,7 +378,7 @@
 
         function createSeatElement(seatId, seatNumber) {
             const slot = document.createElement('div');
-            slot.className = 'seat-slot w-32 h-18 bg-white border-2 border-slate-300 rounded-lg p-2 flex flex-col justify-between items-center shadow-sm relative cursor-pointer hover:border-blue-400';
+            slot.className = 'seat-slot w-30 sm:w-32 h-16 sm:h-18 bg-white border-2 border-slate-300 rounded-lg p-1.5 sm:p-2 flex flex-col justify-between items-center shadow-sm relative cursor-pointer hover:border-blue-400';
             slot.dataset.seatId = seatId;
 
             slot.ondragover = (e) => { e.preventDefault(); slot.classList.add('drag-over'); };
@@ -393,12 +396,12 @@
             if (assignedStudent) {
                 const genderColor = assignedStudent.gender === '男' ? 'text-blue-600 font-bold' : 'text-rose-600 font-bold';
                 slot.innerHTML = `
-                    <div class="flex justify-between w-full text-[11px] px-1 text-slate-400 font-bold">
+                    <div class="flex justify-between w-full text-[10px] sm:text-[11px] px-1 text-slate-400 font-bold">
                         <span>#${seatNumber}</span>
                         <button onclick="removeStudentFromSeat('${seatId}')" class="hover:text-rose-600 px-1 font-bold">×</button>
                     </div>
-                    <div class="text-sm font-bold text-slate-800 tracking-wider px-1">${assignedStudent.name}</div>
-                    <div class="text-[11px] ${genderColor}">${assignedStudent.gender}</div>
+                    <div class="text-xs sm:text-sm font-bold text-slate-800 tracking-wider px-1">${assignedStudent.name}</div>
+                    <div class="text-[10px] sm:text-[11px] ${genderColor}">${assignedStudent.gender}</div>
                 `;
                 slot.draggable = true;
                 slot.ondragstart = (e) => {
@@ -407,10 +410,10 @@
                 };
             } else {
                 slot.innerHTML = `
-                    <div class="flex justify-between w-full text-[11px] px-1 text-slate-400 font-bold">
+                    <div class="flex justify-between w-full text-[10px] sm:text-[11px] px-1 text-slate-400 font-bold">
                         <span>#${seatNumber}</span>
                     </div>
-                    <div class="text-xs text-slate-300 italic my-auto">空座位</div>
+                    <div class="text-[11px] sm:text-xs text-slate-300 italic my-auto">空座位</div>
                     <div></div>
                 `;
             }
@@ -470,9 +473,12 @@
             renderAll();
         }
 
+        // 支援滑鼠與觸控拖曳導師桌
         function makeDraggable(elmnt) {
             let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            
             elmnt.onmousedown = dragMouseDown;
+            elmnt.ontouchstart = touchStart;
 
             function dragMouseDown(e) {
                 e.preventDefault();
@@ -483,16 +489,39 @@
                 elmnt.style.zIndex = 100;
             }
 
+            function touchStart(e) {
+                if (e.touches.length === 1) {
+                    pos3 = e.touches[0].clientX;
+                    pos4 = e.touches[0].clientY;
+                    document.ontouchend = closeDragElement;
+                    document.ontouchmove = touchDrag;
+                    elmnt.style.zIndex = 100;
+                }
+            }
+
             function elementDrag(e) {
                 e.preventDefault();
                 pos1 = pos3 - e.clientX;
                 pos2 = pos4 - e.clientY;
                 pos3 = e.clientX;
                 pos4 = e.clientY;
+                moveElement(pos1, pos2);
+            }
 
+            function touchDrag(e) {
+                if (e.touches.length === 1) {
+                    pos1 = pos3 - e.touches[0].clientX;
+                    pos2 = pos4 - e.touches[0].clientY;
+                    pos3 = e.touches[0].clientX;
+                    pos4 = e.touches[0].clientY;
+                    moveElement(pos1, pos2);
+                }
+            }
+
+            function moveElement(p1, p2) {
                 const canvas = document.getElementById('classroom-canvas');
-                let newTop = elmnt.offsetTop - pos2;
-                let newLeft = elmnt.offsetLeft - pos1;
+                let newTop = elmnt.offsetTop - p2;
+                let newLeft = elmnt.offsetLeft - p1;
 
                 if (newTop < 0) newTop = 0;
                 if (newLeft < 0) newLeft = 0;
@@ -509,6 +538,8 @@
             function closeDragElement() {
                 document.onmouseup = null;
                 document.onmousemove = null;
+                document.ontouchend = null;
+                document.ontouchmove = null;
                 elmnt.style.zIndex = 20;
             }
         }
