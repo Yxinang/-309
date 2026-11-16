@@ -31,7 +31,7 @@
     <!-- 頂部導覽列 -->
     <header class="bg-slate-800 text-white shadow px-6 py-3 flex justify-between items-center">
         <h1 class="text-lg font-bold flex items-center gap-2">
-            🏫 教室座位圖設計工具 (自動儲存・重新整理不遺失)
+            🏫 教室座位圖設計工具 (鎖定排位・重新整理不變動)
         </h1>
         <div class="flex gap-3">
             <button onclick="autoAssign()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-1 shadow transition">
@@ -68,14 +68,14 @@
                     <label class="text-xs text-slate-600">學生總人數：</label>
                     <input type="number" id="student-count" min="1" max="40" value="25" onchange="updateStudentCount()" class="w-16 border border-slate-300 rounded px-2 py-1 text-sm text-center">
                 </div>
-                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）。資料會自動記憶，重新整理不會不見！</p>
+                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）。您手動排好的座位狀態會永久鎖定儲存，重新整理絕不重排！</p>
             </div>
 
             <!-- 步驟 3：學生資訊與待命區 -->
             <div class="border border-slate-200 rounded-lg p-3 bg-slate-50 flex-1 flex flex-col">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="font-bold text-slate-700 text-sm">3. 學生資訊清單（可拖曳入座位）</h2>
-                    <span id="unassigned-count" class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">未入座: 25</span>
+                    <span id="unassigned-count" class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">未入座: 0</span>
                 </div>
                 <p class="text-[11px] text-slate-500 mb-2">直接修改姓名、性別，或將卡片拖曳至右側座位：</p>
                 
@@ -91,15 +91,15 @@
         <main class="flex-1 p-6 flex flex-col items-center justify-center overflow-auto relative">
             
             <!-- 教室畫布外框 -->
-            <div id="classroom-canvas" class="w-[980px] h-[750px] bg-amber-50/70 border-4 border-slate-700 rounded-xl relative shadow-2xl overflow-hidden flex flex-col items-center pt-5">
+            <div id="classroom-canvas" class="w-[1020px] h-[780px] bg-amber-50/70 border-4 border-slate-700 rounded-xl relative shadow-2xl overflow-hidden flex flex-col items-center pt-8 px-8 pb-8">
                 
                 <!-- 黑板 -->
-                <div class="w-3/5 h-12 bg-slate-800 border-4 border-amber-900 rounded flex items-center justify-center text-white font-bold shadow-md tracking-widest text-sm mb-3">
+                <div class="w-3/5 h-12 bg-slate-800 border-4 border-amber-900 rounded flex items-center justify-center text-white font-bold shadow-md tracking-widest text-sm mb-4">
                     黑 板 (Whiteboard)
                 </div>
 
                 <!-- 講台與講台右側特別座位區 -->
-                <div class="w-full flex justify-center items-center gap-8 mb-6 px-12 relative">
+                <div class="w-full flex justify-center items-center gap-8 mb-6 px-8 relative">
                     <!-- 左側平衡空間佔位 -->
                     <div class="w-24"></div>
 
@@ -117,8 +117,8 @@
                     </div>
                 </div>
 
-                <!-- 導師桌（畫布內可自由拖曳，位置會自動儲存） -->
-                <div id="canvas-teacher" class="absolute bg-amber-200 border-2 border-amber-500 rounded-lg p-2 text-center shadow-md w-32 cursor-move z-20" style="top: 110px; left: 50px;">
+                <!-- 導師桌（畫布內可自由拖曳） -->
+                <div id="canvas-teacher" class="absolute bg-amber-200 border-2 border-amber-500 rounded-lg p-2 text-center shadow-md w-32 cursor-move z-20" style="top: 130px; left: 60px;">
                     <div class="text-xs font-bold text-amber-900">👨‍🏫 導師桌</div>
                 </div>
 
@@ -133,7 +133,6 @@
 
     <!-- 程式邏輯 -->
     <script>
-        // 預設 25 位學生資料
         const defaultStudents = [
             { id: 1, name: "黃琨翔", gender: "男" },
             { id: 2, name: "陳秉軒", gender: "男" },
@@ -164,13 +163,12 @@
 
         let students = [];
         let seatingAssignments = {};
-        let teacherPos = { top: 110, left: 50 };
+        let teacherPos = { top: 130, left: 60 };
 
-        // 從 LocalStorage 載入資料
         function loadFromLocalStorage() {
-            const savedStudents = localStorage.getItem('seating_students');
-            const savedAssignments = localStorage.getItem('seating_assignments');
-            const savedTeacherPos = localStorage.getItem('seating_teacher_pos');
+            const savedStudents = localStorage.getItem('seating_students_v2');
+            const savedAssignments = localStorage.getItem('seating_assignments_v2');
+            const savedTeacherPos = localStorage.getItem('seating_teacher_pos_v2');
 
             if (savedStudents) {
                 students = JSON.parse(savedStudents);
@@ -181,6 +179,7 @@
             if (savedAssignments) {
                 seatingAssignments = JSON.parse(savedAssignments);
             } else {
+                // 預設首次載入自動排好
                 initAssignments();
             }
 
@@ -194,11 +193,10 @@
             document.getElementById('student-count').value = students.length;
         }
 
-        // 儲存資料到 LocalStorage
         function saveToLocalStorage() {
-            localStorage.setItem('seating_students', JSON.stringify(students));
-            localStorage.setItem('seating_assignments', JSON.stringify(seatingAssignments));
-            localStorage.setItem('seating_teacher_pos', JSON.stringify(teacherPos));
+            localStorage.setItem('seating_students_v2', JSON.stringify(students));
+            localStorage.setItem('seating_assignments_v2', JSON.stringify(seatingAssignments));
+            localStorage.setItem('seating_teacher_pos_v2', JSON.stringify(teacherPos));
         }
 
         function initApp() {
@@ -208,6 +206,7 @@
 
         function initAssignments() {
             seatingAssignments = {};
+            // 首次初始化或點擊自動排入時，按順序填入
             students.forEach((s, idx) => {
                 seatingAssignments[`seat-${idx + 1}`] = s.id;
             });
@@ -343,7 +342,7 @@
                             groupHasSeat = true;
                         } else {
                             const emptyPlaceholder = document.createElement('div');
-                            emptyPlaceholder.className = 'w-24 h-16 opacity-0 pointer-events-none';
+                            emptyPlaceholder.className = 'w-26 h-16 opacity-0 pointer-events-none';
                             groupDiv.appendChild(emptyPlaceholder);
                         }
                     }
@@ -357,7 +356,7 @@
 
         function createSeatElement(seatId, seatNumber) {
             const slot = document.createElement('div');
-            slot.className = 'seat-slot w-24 h-16 bg-white border-2 border-slate-300 rounded-lg p-1 flex flex-col justify-between items-center shadow-sm relative cursor-pointer hover:border-blue-400';
+            slot.className = 'seat-slot w-26 h-16 bg-white border-2 border-slate-300 rounded-lg p-1.5 flex flex-col justify-between items-center shadow-sm relative cursor-pointer hover:border-blue-400';
             slot.dataset.seatId = seatId;
 
             slot.ondragover = (e) => { e.preventDefault(); slot.classList.add('drag-over'); };
@@ -379,7 +378,7 @@
                         <span class="text-slate-400 font-bold">#${seatNumber}</span>
                         <button onclick="removeStudentFromSeat('${seatId}')" class="text-slate-400 hover:text-rose-600 font-bold">×</button>
                     </div>
-                    <div class="text-xs font-bold text-slate-800 truncate">${assignedStudent.name}</div>
+                    <div class="text-xs font-bold text-slate-800 truncate px-1">${assignedStudent.name}</div>
                     <div class="text-[10px] ${genderColor}">${assignedStudent.gender}</div>
                 `;
                 slot.draggable = true;
@@ -401,6 +400,7 @@
         }
 
         function assignStudentIdToSeat(studentId, seatId) {
+            // 交換或覆蓋座位邏輯
             for (let s in seatingAssignments) {
                 if (seatingAssignments[s] === studentId) {
                     seatingAssignments[s] = null;
@@ -499,7 +499,13 @@
 
         function exportImage() {
             const canvasElement = document.getElementById('classroom-canvas');
-            html2canvas(canvasElement, { scale: 2 }).then(canvas => {
+            html2canvas(canvasElement, { 
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                windowWidth: canvasElement.scrollWidth,
+                windowHeight: canvasElement.scrollHeight
+            }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = '教室座位圖.png';
                 link.href = canvas.toDataURL('image/png');
