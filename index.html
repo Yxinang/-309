@@ -31,7 +31,7 @@
     <!-- 頂部導覽列 -->
     <header class="bg-slate-800 text-white shadow px-6 py-3 flex justify-between items-center">
         <h1 class="text-lg font-bold flex items-center gap-2">
-            🏫 教室座位圖設計工具 (講桌旁加1位・後方24位完美分配)
+            🏫 教室座位圖設計工具 (講桌右側加1位・後方24位完美分配)
         </h1>
         <div class="flex gap-3">
             <button onclick="autoAssign()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-1 shadow transition">
@@ -68,7 +68,7 @@
                     <label class="text-xs text-slate-600">學生總人數：</label>
                     <input type="number" id="student-count" min="1" max="40" value="25" onchange="updateStudentCount()" class="w-16 border border-slate-300 rounded px-2 py-1 text-sm text-center">
                 </div>
-                <p class="text-[11px] text-slate-500">規畫：講台旁特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）完美分配！</p>
+                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）完美分配！</p>
             </div>
 
             <!-- 步驟 3：學生資訊與待命區 -->
@@ -98,23 +98,23 @@
                     黑 板 (Whiteboard)
                 </div>
 
-                <!-- 講台與講台旁特別座位區 -->
+                <!-- 講台與講台右側特別座位區 -->
                 <div class="w-full flex justify-center items-center gap-8 mb-6 px-12 relative">
-                    <!-- 左側講台旁特別座位 (Seat 1) -->
-                    <div class="flex flex-col items-center">
-                        <span class="text-[10px] text-amber-800 font-bold mb-1">講台旁座位</span>
-                        <div id="front-special-seat-container">
-                            <!-- 動態填入 Seat 1 -->
-                        </div>
-                    </div>
+                    <!-- 左側平衡空間佔位 -->
+                    <div class="w-24"></div>
 
                     <!-- 中間講台 -->
                     <div class="w-40 h-8 bg-amber-800 rounded shadow flex items-center justify-center text-white text-xs font-semibold">
                         講台
                     </div>
 
-                    <!-- 右側平衡空間佔位 -->
-                    <div class="w-24"></div>
+                    <!-- 右側講台旁特別座位 (Seat 1) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-[10px] text-amber-800 font-bold mb-1">講台右側座位</span>
+                        <div id="front-special-seat-container">
+                            <!-- 動態填入 Seat 1 -->
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 導師桌（畫布內可自由拖曳） -->
@@ -249,7 +249,7 @@
             document.getElementById('unassigned-count').innerText = `未入座: ${unassignedCount}`;
         }
 
-        // 渲染講台旁的特別座位 (Seat 1)
+        // 渲染講台右側的特別座位 (Seat 1)
         function renderSpecialSeat() {
             const container = document.getElementById('front-special-seat-container');
             container.innerHTML = '';
@@ -267,7 +267,7 @@
             if (totalStudents <= 1) return;
 
             let currentSeatIndex = 2; // 從第 2 個座位開始排在後方
-            const remainingCount = totalStudents - 1; // 扣除講台旁 1 個
+            const remainingCount = totalStudents - 1; // 扣除講台右側 1 個
             const fullRowsCount = Math.floor(remainingCount / 6);
             const extraCount = remainingCount % 6;
 
