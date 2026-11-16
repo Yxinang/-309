@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>教室座位圖設計工具 (Classroom Seating Planner)</title>
-    <!-- 引入 Tailwind CSS 與 html2canvas -->
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+            font-family: "Microsoft JhengHei", "Noto Sans TC", Arial, sans-serif;
         }
         .student-chip {
             cursor: grab;
@@ -27,6 +26,13 @@
             border-color: #3b82f6;
             transform: scale(1.03);
         }
+        /* 列印友善樣式：點擊列印時完美輸出整張座位圖，絕對不模糊、不切字 */
+        @media print {
+            body { background: white !important; }
+            header, aside { display: none !important; }
+            main { padding: 0 !important; }
+            #classroom-canvas { border: none !important; box-shadow: none !important; width: 100% !important; height: auto !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col">
@@ -34,20 +40,17 @@
     <!-- 頂部導覽列 -->
     <header class="bg-slate-800 text-white shadow px-6 py-3 flex justify-between items-center">
         <h1 class="text-lg font-bold flex items-center gap-2">
-            🏫 教室座位圖設計工具 (完美防亂碼・清晰不切字)
+            🏫 教室座位圖設計工具 (完美列印儲存・永不亂碼)
         </h1>
         <div class="flex gap-2">
-            <button onclick="saveManual()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
-                💾 儲存目前狀態
-            </button>
             <button onclick="autoAssign()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
                 ⚡ 自動排入座位
             </button>
             <button onclick="clearSeats()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
                 🔄 清空座位
             </button>
-            <button onclick="exportImage()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
-                📥 匯出圖片
+            <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
+                🖨️ 列印 / 存為PDF圖片
             </button>
         </div>
     </header>
@@ -74,7 +77,7 @@
                     <label class="text-xs text-slate-600">學生總人數：</label>
                     <input type="number" id="student-count" min="1" max="40" value="25" onchange="updateStudentCount()" class="w-16 border border-slate-300 rounded px-2 py-1 text-sm text-center">
                 </div>
-                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）。已全面優化字型與截圖清晰度！</p>
+                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）。重新整理或關閉網頁後，名單與座位都會自動保留！</p>
             </div>
 
             <!-- 步驟 3：學生資訊與待命區 -->
@@ -97,10 +100,10 @@
         <main class="flex-1 p-6 flex flex-col items-center justify-center overflow-auto relative">
             
             <!-- 教室畫布外框 -->
-            <div id="classroom-canvas" class="w-[1060px] h-[800px] bg-amber-50/70 border-4 border-slate-700 rounded-xl relative shadow-2xl overflow-hidden flex flex-col items-center pt-8 px-8 pb-8">
+            <div id="classroom-canvas" class="w-[1080px] h-[820px] bg-amber-50/70 border-4 border-slate-700 rounded-xl relative shadow-2xl overflow-hidden flex flex-col items-center pt-8 px-8 pb-8">
                 
                 <!-- 黑板 -->
-                <div class="w-3/5 h-12 bg-slate-800 border-4 border-amber-900 rounded flex items-center justify-center text-white font-bold shadow-md tracking-widest text-sm mb-4">
+                <div class="w-3/5 h-12 bg-slate-800 border-4 border-amber-900 rounded flex items-center justify-center text-white font-bold shadow-md tracking-widest text-base mb-4">
                     黑 板 (Whiteboard)
                 </div>
 
@@ -110,13 +113,13 @@
                     <div class="w-28"></div>
 
                     <!-- 中間講台 -->
-                    <div class="w-40 h-8 bg-amber-800 rounded shadow flex items-center justify-center text-white text-xs font-semibold">
+                    <div class="w-40 h-10 bg-amber-800 rounded shadow flex items-center justify-center text-white text-sm font-bold">
                         講台
                     </div>
 
                     <!-- 右側講台旁特別座位 (Seat 1) -->
                     <div class="flex flex-col items-center">
-                        <span class="text-[10px] text-amber-800 font-bold mb-1">講台右側座位</span>
+                        <span class="text-[11px] text-amber-900 font-bold mb-1">講台右側座位</span>
                         <div id="front-special-seat-container">
                             <!-- 動態填入 Seat 1 -->
                         </div>
@@ -124,12 +127,12 @@
                 </div>
 
                 <!-- 導師桌（畫布內可自由拖曳） -->
-                <div id="canvas-teacher" class="absolute bg-amber-200 border-2 border-amber-500 rounded-lg p-2 text-center shadow-md w-32 cursor-move z-20" style="top: 130px; left: 60px;">
+                <div id="canvas-teacher" class="absolute bg-amber-200 border-2 border-amber-500 rounded-lg p-3 text-center shadow-md w-32 cursor-move z-20" style="top: 130px; left: 60px;">
                     <div class="text-xs font-bold text-amber-900">👨‍🏫 導師桌</div>
                 </div>
 
                 <!-- 後方 24 位座位矩陣容器 -->
-                <div id="seats-grid" class="flex flex-col gap-3.5 items-center relative z-10 w-full px-6">
+                <div id="seats-grid" class="flex flex-col gap-4 items-center relative z-10 w-full px-6">
                     <!-- 後方 24 個座位生成於此 -->
                 </div>
 
@@ -173,9 +176,9 @@
 
         function loadFromLocalStorage() {
             try {
-                const savedStudents = localStorage.getItem('seating_students_v5');
-                const savedAssignments = localStorage.getItem('seating_assignments_v5');
-                const savedTeacherPos = localStorage.getItem('seating_teacher_pos_v5');
+                const savedStudents = localStorage.getItem('seating_students_v6');
+                const savedAssignments = localStorage.getItem('seating_assignments_v6');
+                const savedTeacherPos = localStorage.getItem('seating_teacher_pos_v6');
 
                 if (savedStudents) {
                     students = JSON.parse(savedStudents);
@@ -205,17 +208,12 @@
 
         function saveToLocalStorage() {
             try {
-                localStorage.setItem('seating_students_v5', JSON.stringify(students));
-                localStorage.setItem('seating_assignments_v5', JSON.stringify(seatingAssignments));
-                localStorage.setItem('seating_teacher_pos_v5', JSON.stringify(teacherPos));
+                localStorage.setItem('seating_students_v6', JSON.stringify(students));
+                localStorage.setItem('seating_assignments_v6', JSON.stringify(seatingAssignments));
+                localStorage.setItem('seating_teacher_pos_v6', JSON.stringify(teacherPos));
             } catch (e) {
                 console.warn('LocalStorage 儲存受限');
             }
-        }
-
-        function saveManual() {
-            saveToLocalStorage();
-            alert('已成功儲存目前的座位與學生狀態！');
         }
 
         function initApp() {
@@ -288,7 +286,7 @@
                 card.innerHTML = `
                     <div class="flex items-center gap-1.5 flex-1">
                         <span class="font-bold text-slate-400 w-6">#${s.id}</span>
-                        <input type="text" value="${s.name}" onclick="event.stopPropagation()" oninput="updateStudentInfo(${s.id}, 'name', this.value)" class="border rounded px-1 py-0.5 w-20 text-xs">
+                        <input type="text" value="${s.name}" onclick="event.stopPropagation()" oninput="updateStudentInfo(${s.id}, 'name', this.value)" class="border rounded px-1 py-0.5 w-20 text-xs font-semibold">
                         <select onclick="event.stopPropagation()" onchange="updateStudentInfo(${s.id}, 'gender', this.value)" class="border rounded px-1 py-0.5 text-xs ${genderColor}">
                             <option value="男" ${s.gender === '男' ? 'selected' : ''}>男</option>
                             <option value="女" ${s.gender === '女' ? 'selected' : ''}>女</option>
@@ -332,7 +330,7 @@
 
                 for (let group = 0; group < 3; group++) {
                     const groupDiv = document.createElement('div');
-                    groupDiv.className = 'flex gap-2.5 bg-slate-200/60 p-2 rounded-lg border border-slate-300 shadow-sm';
+                    groupDiv.className = 'flex gap-3 bg-slate-200/60 p-2 rounded-lg border border-slate-300 shadow-sm';
 
                     for (let i = 0; i < 2; i++) {
                         if (currentSeatIndex <= totalStudents) {
@@ -352,7 +350,7 @@
                 
                 for (let group = 0; group < 3; group++) {
                     const groupDiv = document.createElement('div');
-                    groupDiv.className = 'flex gap-2.5 bg-slate-200/50 p-2 rounded-lg border border-slate-300';
+                    groupDiv.className = 'flex gap-3 bg-slate-200/50 p-2 rounded-lg border border-slate-300';
                     
                     let groupHasSeat = false;
                     for (let i = 0; i < 2; i++) {
@@ -363,7 +361,7 @@
                             groupHasSeat = true;
                         } else {
                             const emptyPlaceholder = document.createElement('div');
-                            emptyPlaceholder.className = 'w-30 h-16 opacity-0 pointer-events-none';
+                            emptyPlaceholder.className = 'w-32 h-18 opacity-0 pointer-events-none';
                             groupDiv.appendChild(emptyPlaceholder);
                         }
                     }
@@ -377,8 +375,8 @@
 
         function createSeatElement(seatId, seatNumber) {
             const slot = document.createElement('div');
-            // 加寬至 w-30 與 h-16，提供極為寬敞的空間顯示名字
-            slot.className = 'seat-slot w-30 h-16 bg-white border-2 border-slate-300 rounded-lg p-1.5 flex flex-col justify-between items-center shadow-sm relative cursor-pointer hover:border-blue-400';
+            // 加大寬高至 w-32 h-18，確保名字完美呈現、絕對不切字
+            slot.className = 'seat-slot w-32 h-18 bg-white border-2 border-slate-300 rounded-lg p-2 flex flex-col justify-between items-center shadow-sm relative cursor-pointer hover:border-blue-400';
             slot.dataset.seatId = seatId;
 
             slot.ondragover = (e) => { e.preventDefault(); slot.classList.add('drag-over'); };
@@ -396,12 +394,12 @@
             if (assignedStudent) {
                 const genderColor = assignedStudent.gender === '男' ? 'text-blue-600 font-bold' : 'text-rose-600 font-bold';
                 slot.innerHTML = `
-                    <div class="flex justify-between w-full text-[10px] px-1 text-slate-400 font-bold">
+                    <div class="flex justify-between w-full text-[11px] px-1 text-slate-400 font-bold">
                         <span>#${seatNumber}</span>
-                        <button onclick="removeStudentFromSeat('${seatId}')" class="hover:text-rose-600">×</button>
+                        <button onclick="removeStudentFromSeat('${seatId}')" class="hover:text-rose-600 px-1 font-bold">×</button>
                     </div>
-                    <div class="text-xs font-bold text-slate-800 tracking-wide truncate px-1">${assignedStudent.name}</div>
-                    <div class="text-[10px] ${genderColor}">${assignedStudent.gender}</div>
+                    <div class="text-sm font-bold text-slate-800 tracking-wider px-1">${assignedStudent.name}</div>
+                    <div class="text-[11px] ${genderColor}">${assignedStudent.gender}</div>
                 `;
                 slot.draggable = true;
                 slot.ondragstart = (e) => {
@@ -410,10 +408,10 @@
                 };
             } else {
                 slot.innerHTML = `
-                    <div class="flex justify-between w-full text-[10px] px-1 text-slate-400 font-bold">
+                    <div class="flex justify-between w-full text-[11px] px-1 text-slate-400 font-bold">
                         <span>#${seatNumber}</span>
                     </div>
-                    <div class="text-[11px] text-slate-300 italic my-auto">空座位</div>
+                    <div class="text-xs text-slate-300 italic my-auto">空座位</div>
                     <div></div>
                 `;
             }
@@ -517,22 +515,6 @@
         }
 
         makeDraggable(document.getElementById('canvas-teacher'));
-
-        function exportImage() {
-            const canvasElement = document.getElementById('classroom-canvas');
-            html2canvas(canvasElement, { 
-                scale: 3, // 提高倍率至 3 倍，確保匯出的圖片超級清晰、不模糊、不切字
-                useCORS: true,
-                logging: false,
-                windowWidth: canvasElement.scrollWidth,
-                windowHeight: canvasElement.scrollHeight
-            }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = '教室座位圖.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            });
-        }
 
         window.onload = function() {
             initApp();
