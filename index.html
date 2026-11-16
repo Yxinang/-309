@@ -31,17 +31,21 @@
     <!-- 頂部導覽列 -->
     <header class="bg-slate-800 text-white shadow px-6 py-3 flex justify-between items-center">
         <h1 class="text-lg font-bold flex items-center gap-2">
-            🏫 教室座位圖設計工具 (鎖定排位・重新整理不變動)
+            🏫 教室座位圖設計工具 (雙重防護・永久記憶)
         </h1>
-        <div class="flex gap-3">
-            <button onclick="autoAssign()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-1 shadow transition">
-                ⚡ 自動排入座位
+        <div class="flex gap-2">
+            <button onclick="exportConfig()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
+                💾 匯出設定檔
             </button>
-            <button onclick="clearSeats()" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-1 shadow transition">
+            <label class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition cursor-pointer">
+                📂 匯入設定檔
+                <input type="file" id="import-file" accept=".json" onchange="importConfig(event)" class="hidden">
+            </label>
+            <button onclick="clearSeats()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
                 🔄 清空座位
             </button>
-            <button onclick="exportImage()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-1 shadow transition">
-                📥 匯出圖片存檔
+            <button onclick="exportImage()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded text-xs font-medium flex items-center gap-1 shadow transition">
+                📥 匯出圖片
             </button>
         </div>
     </header>
@@ -68,7 +72,7 @@
                     <label class="text-xs text-slate-600">學生總人數：</label>
                     <input type="number" id="student-count" min="1" max="40" value="25" onchange="updateStudentCount()" class="w-16 border border-slate-300 rounded px-2 py-1 text-sm text-center">
                 </div>
-                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）。您手動排好的座位狀態會永久鎖定儲存，重新整理絕不重排！</p>
+                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）。</p>
             </div>
 
             <!-- 步驟 3：學生資訊與待命區 -->
@@ -166,47 +170,103 @@
         let teacherPos = { top: 130, left: 60 };
 
         function loadFromLocalStorage() {
-            const savedStudents = localStorage.getItem('seating_students_v2');
-            const savedAssignments = localStorage.getItem('seating_assignments_v2');
-            const savedTeacherPos = localStorage.getItem('seating_teacher_pos_v2');
+            try {
+                const savedStudents = localStorage.getItem('seating_students_v3');
+                const savedAssignments = localStorage.getItem('seating_assignments_v3');
+                const savedTeacherPos = localStorage.getItem('seating_teacher_pos_v3');
 
-            if (savedStudents) {
-                students = JSON.parse(savedStudents);
-            } else {
+                if (savedStudents) {
+                    students = JSON.parse(savedStudents);
+                } else {
+                    students = JSON.parse(JSON.stringify(defaultStudents));
+                }
+
+                if (savedAssignments) {
+                    seatingAssignments = JSON.parse(savedAssignments);
+                } else {
+                    initAssignments();
+                }
+
+                if (savedTeacherPos) {
+                    teacherPos = JSON.parse(savedTeacherPos);
+                    const teacherEl = document.getElementById('canvas-teacher');
+                    teacherEl.style.top = teacherPos.top + 'px';
+                    teacherEl.style.left = teacherPos.left + 'px';
+                }
+            } catch (e) {
                 students = JSON.parse(JSON.stringify(defaultStudents));
-            }
-
-            if (savedAssignments) {
-                seatingAssignments = JSON.parse(savedAssignments);
-            } else {
-                // 預設首次載入自動排好
                 initAssignments();
-            }
-
-            if (savedTeacherPos) {
-                teacherPos = JSON.parse(savedTeacherPos);
-                const teacherEl = document.getElementById('canvas-teacher');
-                teacherEl.style.top = teacherPos.top + 'px';
-                teacherEl.style.left = teacherPos.left + 'px';
             }
 
             document.getElementById('student-count').value = students.length;
         }
 
         function saveToLocalStorage() {
-            localStorage.setItem('seating_students_v2', JSON.stringify(students));
-            localStorage.setItem('seating_assignments_v2', JSON.stringify(seatingAssignments));
-            localStorage.setItem('seating_teacher_pos_v2', JSON.stringify(teacherPos));
+            try {
+                localStorage.setItem('seating_students_v3', JSON.stringify(students));
+                localStorage.setItem('seating_assignments_v3', JSON.stringify(seatingAssignments));
+                localStorage.setItem('seating_teacher_pos_v3', JSON.stringify(teacherPos));
+            } catch (e) {
+                console.warn('LocalStorage 儲存受限');
+            }
+        }
+
+        // 匯出設定檔 (JSON)
+        function exportConfig() {
+            const data = {
+                students: students,
+                seatingAssignments: seatingAssignments,
+                teacherPos: teacherPos
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '教室座位設定檔.json';
+            link.click();
+        }
+
+        // 匯入設定檔 (JSON)
+        function importConfig(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.students && data.seatingAssignments) {
+                        students = data.students;
+                        seatingAssignments = data.seatingAssignments;
+                        if (data.teacherPos) {
+                            teacherPos = data.teacherPos;
+                            const teacherEl = document.getElementById('canvas-teacher');
+                            teacherEl.style.top = teacherPos.top + 'px';
+                            teacherEl.style.left = teacherPos.left + 'px';
+                        }
+                        saveToLocalStorage();
+                        document.getElementById('student-count').value = students.length;
+                        renderAll();
+                        alert('設定檔匯入成功！');
+                    } else {
+                        alert('檔案格式錯誤！');
+                    }
+                } catch (err) {
+                    alert('無法解析此 JSON 檔案。');
+                }
+            };
+            reader.readAsText(file);
         }
 
         function initApp() {
             loadFromLocalStorage();
+            // 若檢查發現沒有任何有效座位對應，才自動初始化
+            if (!seatingAssignments || Object.keys(seatingAssignments).length === 0) {
+                initAssignments();
+            }
             renderAll();
         }
 
         function initAssignments() {
             seatingAssignments = {};
-            // 首次初始化或點擊自動排入時，按順序填入
             students.forEach((s, idx) => {
                 seatingAssignments[`seat-${idx + 1}`] = s.id;
             });
@@ -400,7 +460,6 @@
         }
 
         function assignStudentIdToSeat(studentId, seatId) {
-            // 交換或覆蓋座位邏輯
             for (let s in seatingAssignments) {
                 if (seatingAssignments[s] === studentId) {
                     seatingAssignments[s] = null;
