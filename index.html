@@ -31,7 +31,7 @@
     <!-- 頂部導覽列 -->
     <header class="bg-slate-800 text-white shadow px-6 py-3 flex justify-between items-center">
         <h1 class="text-lg font-bold flex items-center gap-2">
-            🏫 教室座位圖設計工具 (講桌右側加1位・後方24位完美分配)
+            🏫 教室座位圖設計工具 (自動儲存・重新整理不遺失)
         </h1>
         <div class="flex gap-3">
             <button onclick="autoAssign()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-1 shadow transition">
@@ -68,7 +68,7 @@
                     <label class="text-xs text-slate-600">學生總人數：</label>
                     <input type="number" id="student-count" min="1" max="40" value="25" onchange="updateStudentCount()" class="w-16 border border-slate-300 rounded px-2 py-1 text-sm text-center">
                 </div>
-                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）完美分配！</p>
+                <p class="text-[11px] text-slate-500">規畫：講台右側特設 1 個獨立座位，後方 24 位採橫排 6 個（兩兩並列 2-2-2，共 4 排）。資料會自動記憶，重新整理不會不見！</p>
             </div>
 
             <!-- 步驟 3：學生資訊與待命區 -->
@@ -117,7 +117,7 @@
                     </div>
                 </div>
 
-                <!-- 導師桌（畫布內可自由拖曳） -->
+                <!-- 導師桌（畫布內可自由拖曳，位置會自動儲存） -->
                 <div id="canvas-teacher" class="absolute bg-amber-200 border-2 border-amber-500 rounded-lg p-2 text-center shadow-md w-32 cursor-move z-20" style="top: 110px; left: 50px;">
                     <div class="text-xs font-bold text-amber-900">👨‍🏫 導師桌</div>
                 </div>
@@ -133,8 +133,8 @@
 
     <!-- 程式邏輯 -->
     <script>
-        // 預設 25 位學生資料 (1~13 男生，14~25 女生)
-        let students = [
+        // 預設 25 位學生資料
+        const defaultStudents = [
             { id: 1, name: "黃琨翔", gender: "男" },
             { id: 2, name: "陳秉軒", gender: "男" },
             { id: 3, name: "杜晨翔", gender: "男" },
@@ -162,11 +162,47 @@
             { id: 25, name: "蘇唯心", gender: "女" }
         ];
 
+        let students = [];
         let seatingAssignments = {};
-        let draggedStudentId = null;
+        let teacherPos = { top: 110, left: 50 };
+
+        // 從 LocalStorage 載入資料
+        function loadFromLocalStorage() {
+            const savedStudents = localStorage.getItem('seating_students');
+            const savedAssignments = localStorage.getItem('seating_assignments');
+            const savedTeacherPos = localStorage.getItem('seating_teacher_pos');
+
+            if (savedStudents) {
+                students = JSON.parse(savedStudents);
+            } else {
+                students = JSON.parse(JSON.stringify(defaultStudents));
+            }
+
+            if (savedAssignments) {
+                seatingAssignments = JSON.parse(savedAssignments);
+            } else {
+                initAssignments();
+            }
+
+            if (savedTeacherPos) {
+                teacherPos = JSON.parse(savedTeacherPos);
+                const teacherEl = document.getElementById('canvas-teacher');
+                teacherEl.style.top = teacherPos.top + 'px';
+                teacherEl.style.left = teacherPos.left + 'px';
+            }
+
+            document.getElementById('student-count').value = students.length;
+        }
+
+        // 儲存資料到 LocalStorage
+        function saveToLocalStorage() {
+            localStorage.setItem('seating_students', JSON.stringify(students));
+            localStorage.setItem('seating_assignments', JSON.stringify(seatingAssignments));
+            localStorage.setItem('seating_teacher_pos', JSON.stringify(teacherPos));
+        }
 
         function initApp() {
-            initAssignments();
+            loadFromLocalStorage();
             renderAll();
         }
 
@@ -175,6 +211,7 @@
             students.forEach((s, idx) => {
                 seatingAssignments[`seat-${idx + 1}`] = s.id;
             });
+            saveToLocalStorage();
         }
 
         function updateStudentCount() {
@@ -194,6 +231,7 @@
             const s = students.find(item => item.id === id);
             if (s) {
                 s[field] = value;
+                saveToLocalStorage();
                 renderAll();
             }
         }
@@ -222,7 +260,6 @@
                 card.className = `student-chip bg-white border border-slate-300 rounded p-1.5 flex items-center justify-between text-xs shadow-sm hover:border-blue-400`;
                 card.draggable = true;
                 card.ondragstart = (e) => {
-                    draggedStudentId = s.id;
                     e.dataTransfer.setData('text/plain', s.id);
                 };
 
@@ -249,7 +286,6 @@
             document.getElementById('unassigned-count').innerText = `未入座: ${unassignedCount}`;
         }
 
-        // 渲染講台右側的特別座位 (Seat 1)
         function renderSpecialSeat() {
             const container = document.getElementById('front-special-seat-container');
             container.innerHTML = '';
@@ -258,7 +294,6 @@
             }
         }
 
-        // 渲染後方 24 位座位矩陣 (Seat 2 ~ Seat 25，共 4 排，每排 6 個採 2-2-2 並列)
         function renderSeatsGrid() {
             const gridEl = document.getElementById('seats-grid');
             gridEl.innerHTML = '';
@@ -266,12 +301,11 @@
             const totalStudents = students.length;
             if (totalStudents <= 1) return;
 
-            let currentSeatIndex = 2; // 從第 2 個座位開始排在後方
-            const remainingCount = totalStudents - 1; // 扣除講台右側 1 個
+            let currentSeatIndex = 2;
+            const remainingCount = totalStudents - 1;
             const fullRowsCount = Math.floor(remainingCount / 6);
             const extraCount = remainingCount % 6;
 
-            // 後方標準 6 個一排（2-2-2 分組）
             for (let r = 0; r < fullRowsCount; r++) {
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'flex justify-center gap-4 w-full';
@@ -292,7 +326,6 @@
                 gridEl.appendChild(rowDiv);
             }
 
-            // 若還有未滿一行的餘數，獨立排在最後一行
             if (extraCount > 0) {
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'flex justify-center gap-3 w-full';
@@ -374,6 +407,7 @@
                 }
             }
             seatingAssignments[seatId] = studentId;
+            saveToLocalStorage();
             renderAll();
         }
 
@@ -383,6 +417,7 @@
 
         function removeStudentFromSeat(seatId) {
             seatingAssignments[seatId] = null;
+            saveToLocalStorage();
             renderAll();
         }
 
@@ -400,6 +435,7 @@
                     seatingAssignments[s] = null;
                 }
             }
+            saveToLocalStorage();
             renderAll();
         }
 
@@ -412,6 +448,7 @@
             for (let s in seatingAssignments) {
                 seatingAssignments[s] = null;
             }
+            saveToLocalStorage();
             renderAll();
         }
 
@@ -446,6 +483,9 @@
 
                 elmnt.style.top = newTop + "px";
                 elmnt.style.left = newLeft + "px";
+
+                teacherPos = { top: newTop, left: newLeft };
+                saveToLocalStorage();
             }
 
             function closeDragElement() {
