@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>教室座位圖設計工具 (Classroom Seating Planner)</title>
-    <!-- 引入 Tailwind CSS 與 html2canvas 以便匯出圖片 -->
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2canvas for exporting canvas as PNG image -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         .seat-card {
@@ -19,262 +20,371 @@
         }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen flex flex-col">
+<body class="bg-slate-100 min-h-screen flex flex-col font-sans">
 
     <!-- 頂部導覽列 -->
-    <header class="bg-slate-800 text-white shadow px-6 py-3 flex justify-between items-center">
+    <header class="bg-slate-900 text-white shadow-md px-6 py-3 flex justify-between items-center z-20">
         <h1 class="text-lg font-bold flex items-center gap-2">
-            🏫 教室座位圖設計工具 (Classroom Seating Planner)
+            🏫 教室座位圖設計工具 <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">固定座位與拖放版</span>
         </h1>
         <div class="flex gap-3">
-            <button onclick="exportImage()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-1 shadow transition">
-                📥 匯出圖片
+            <button onclick="exportImage()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 shadow transition">
+                📥 匯出圖片存檔
             </button>
-            <button onclick="resetLayout()" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-1 shadow transition">
-                🔄 重新排列
+            <button onclick="resetAllSeats()" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 shadow transition">
+                🔄 全部清空重排
             </button>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
-        <!-- 左側控制面板 -->
-        <aside class="w-80 bg-white border-r border-slate-200 flex flex-col p-4 gap-4 overflow-y-auto">
+        <!-- 左側控制與待命區 -->
+        <aside class="w-[380px] bg-white border-r border-slate-200 flex flex-col p-4 gap-4 overflow-y-auto shadow-inner">
             
-            <!-- 步驟 1：設定導師位置 -->
-            <div class="border border-slate-200 rounded-lg p-3 shadow-sm bg-slate-50">
-                <h2 class="font-bold text-slate-700 text-sm mb-2">1. 設定導師位置</h2>
-                <div class="flex items-center gap-2">
-                    <div id="teacher-preset" class="bg-amber-100 border border-amber-300 rounded p-2 text-center cursor-pointer text-xs font-semibold w-24 shadow-sm hover:bg-amber-200 transition">
-                        👨‍🏫 導師桌
+            <!-- 步驟 1 & 2：設定選項 -->
+            <div class="border border-slate-200 rounded-xl p-3 shadow-sm bg-slate-50/70 flex flex-col gap-3">
+                <div>
+                    <h2 class="font-bold text-slate-700 text-sm mb-1.5 flex items-center gap-1">
+                        <span class="bg-blue-600 text-white w-5 h-5 rounded-full inline-flex items-center justify-center text-xs">1</span> 
+                        設定座位排列模式
+                    </h2>
+                    <div class="flex gap-2">
+                        <select id="layout-mode" onchange="renderClassroom()" class="flex-1 border border-slate-300 rounded-lg px-2 py-1.5 text-xs bg-white font-medium text-slate-700 outline-none">
+                            <option value="paired" selected>並排（雙人座相鄰）</option>
+                            <option value="individual">個人座（單人單桌）</option>
+                        </select>
+                        <select id="cols-count" onchange="renderClassroom()" class="w-28 border border-slate-300 rounded-lg px-2 py-1.5 text-xs bg-white font-medium text-slate-700 outline-none">
+                            <option value="3">每行 3 組</option>
+                            <option value="4" selected>每行 4 組</option>
+                            <option value="5">每行 5 組</option>
+                        </select>
                     </div>
-                    <span class="text-xs text-slate-500">（可直接拖曳至畫布任意處）</span>
                 </div>
             </div>
 
-            <!-- 步驟 2：設定學生數量 -->
-            <div class="border border-slate-200 rounded-lg p-3 shadow-sm bg-slate-50">
-                <h2 class="font-bold text-slate-700 text-sm mb-2">2. 設定學生數量</h2>
-                <div class="flex items-center gap-2">
-                    <label class="text-sm text-slate-600">學生人數：</label>
-                    <input type="number" id="student-count" min="1" max="50" value="26" class="w-20 border border-slate-300 rounded px-2 py-1 text-sm text-center">
-                    <button onclick="generateSeats()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm font-medium transition">
-                        確認生成
+            <!-- 步驟 3：待命學生姓名卡片區 -->
+            <div class="border border-slate-200 rounded-xl p-3 shadow-sm bg-slate-50/70 flex-1 flex flex-col">
+                <div class="flex justify-between items-center mb-1">
+                    <h2 class="font-bold text-slate-700 text-sm flex items-center gap-1">
+                        <span class="bg-blue-600 text-white w-5 h-5 rounded-full inline-flex items-center justify-center text-xs">3</span> 
+                        學生姓名待命區 (<span id="unassigned-count">25</span>)
+                    </h2>
+                    <button onclick="returnAllToPool()" class="text-[11px] text-blue-600 hover:text-blue-800 font-semibold underline">
+                        全部收回
                     </button>
                 </div>
-            </div>
-
-            <!-- 步驟 3：設定學生資訊 -->
-            <div class="border border-slate-200 rounded-lg p-3 shadow-sm bg-slate-50 flex-1 flex flex-col">
-                <h2 class="font-bold text-slate-700 text-sm mb-2">3. 設定學生資訊</h2>
-                <p class="text-xs text-slate-500 mb-2">在此可直接修改各座號對應的學生姓名與性別：</p>
-                <div id="student-list-inputs" class="flex flex-col gap-2 overflow-y-auto flex-1 max-h-72 pr-1">
-                    <!-- 動態生成輸入框 -->
+                <p class="text-[11px] text-slate-500 mb-2">將下方學生卡片拖曳至右側固定的座位格中：</p>
+                
+                <!-- 待命學生卡片容器 (Drop Target for returning) -->
+                <div id="student-pool" 
+                     ondragover="allowDrop(event)" 
+                     ondrop="dropToPool(event)"
+                     class="flex flex-wrap gap-1.5 overflow-y-auto flex-1 max-h-[380px] p-2 bg-white rounded-lg border border-dashed border-slate-300 content-start">
+                    <!-- 動態帶入學生姓名卡片 -->
                 </div>
             </div>
 
         </aside>
 
-        <!-- 右側互動畫布區 -->
-        <main class="flex-1 p-6 flex flex-col items-center justify-center overflow-auto relative">
+        <!-- 右側互動畫布區 (固定座位網格) -->
+        <main class="flex-1 p-6 flex flex-col items-center justify-center overflow-auto relative bg-slate-200/60">
             
             <!-- 教室畫布外框 -->
-            <div id="classroom-canvas" class="w-[900px] h-[650px] bg-amber-50 border-4 border-slate-700 rounded-xl relative shadow-2xl overflow-hidden">
+            <div id="classroom-canvas" class="w-[980px] h-[720px] bg-amber-50/90 border-4 border-slate-700 rounded-2xl relative shadow-2xl overflow-hidden flex flex-col items-center pt-5">
                 
                 <!-- 黑板 -->
-                <div class="absolute top-4 left-1/2 transform -translate-x-1/2 w-3/5 h-12 bg-slate-800 border-4 border-amber-900 rounded flex items-center justify-center text-white font-bold shadow-md tracking-widest text-sm">
+                <div class="w-3/5 h-14 bg-slate-800 border-4 border-amber-900 rounded-lg flex items-center justify-center text-white font-bold shadow-md tracking-widest text-base mb-3">
                     黑 板 (Whiteboard)
                 </div>
 
-                <!-- 講台裝飾 -->
-                <div class="absolute top-20 left-1/2 transform -translate-x-1/2 w-40 h-8 bg-amber-800 rounded shadow flex items-center justify-center text-white text-xs font-semibold">
-                    講台
+                <!-- 講台與導師桌區域 -->
+                <div class="w-full flex justify-center items-center gap-8 mb-4 px-10">
+                    <div class="w-40 h-8 bg-amber-800 rounded-md shadow flex items-center justify-center text-white text-xs font-semibold">
+                        講 台
+                    </div>
+                    <!-- 可拖曳之導師桌 -->
+                    <div id="teacher-seat" draggable="true" ondragstart="dragTeacher(event)" class="cursor-grab active:cursor-grabbing bg-amber-200 border-2 border-amber-500 rounded-xl px-4 py-1.5 text-center shadow-md absolute z-10" style="top: 90px; left: 80px;">
+                        <div class="text-xs font-bold text-amber-900">👨‍🏫 導師桌</div>
+                    </div>
                 </div>
 
-                <!-- 導師桌圖塊 -->
-                <div id="teacher-seat" class="seat-card bg-amber-200 border-2 border-amber-500 rounded-lg p-2 text-center shadow-md w-28" style="top: 80px; left: 50px;">
-                    <div class="text-xs font-bold text-amber-900">👨‍🏫 導師桌</div>
+                <!-- 固定座位網格容器 -->
+                <div id="seats-grid-container" class="flex flex-wrap justify-center gap-x-6 gap-y-3 px-8 w-full max-w-[900px] mt-2">
+                    <!-- 動態生成的固定座位空格 -->
                 </div>
 
-                <!-- 學生座位容器 -->
-                <div id="students-container">
-                    <!-- 動態學生座位會生成在此 -->
-                </div>
-
+                <!-- 教室佈置標示 -->
+                <div class="absolute bottom-3 left-4 text-xs text-slate-400 font-medium">教室前方 ⬆</div>
+                <div class="absolute bottom-3 right-4 text-xs text-slate-400 font-medium">🚪 出入口</div>
             </div>
         </main>
     </div>
 
-    <!-- 程式邏輯互動 -->
+    <!-- 互動主程式邏輯 -->
     <script>
-        let studentData = [];
-        const defaultNames = [
-            "陳小明", "李美玲", "林志豪", "王曉華", "張偉誠", "黃淑芬", "吳建宏", "蔡依婷", 
-            "賴俊傑", "許雅婷", "郭志偉", "鄭雅萍", "謝佳豪", "曾怡君", "潘信宏", "洪秀貞", 
-            "彭俊宇", "江佩芬", "傅建志", "方淑君", "曾國華", "呂佳穎", "戴志豪", "邱美琪", 
-            "莊雅雯", "柯志明", "葉美玲", "袁家豪", "夏郁婷", "羅建安"
+        // 25位學生名單 (1~13 男，14~25 女)
+        const initialStudents = [
+            { id: 1, name: "黃琨翔", gender: "男" },
+            { id: 2, name: "陳秉軒", gender: "男" },
+            { id: 3, name: "杜晨翔", gender: "男" },
+            { id: 4, name: "劉景碩", gender: "男" },
+            { id: 5, name: "王宇童", gender: "男" },
+            { id: 6, name: "吳立翔", gender: "男" },
+            { id: 7, name: "陳宇恩", gender: "男" },
+            { id: 8, name: "林楷諾", gender: "男" },
+            { id: 9, name: "李柏衡", gender: "男" },
+            { id: 10, name: "林晉翰", gender: "男" },
+            { id: 11, name: "徐堉綸", gender: "男" },
+            { id: 12, name: "紀孟希", gender: "男" },
+            { id: 13, name: "徐晟瀚", gender: "男" },
+            { id: 14, name: "王知言", gender: "女" },
+            { id: 15, name: "蔡佩穎", gender: "女" },
+            { id: 16, name: "鄭詠心", gender: "女" },
+            { id: 17, name: "郭聿芸", gender: "女" },
+            { id: 18, name: "楊茲甯", gender: "女" },
+            { id: 19, name: "王岑芝", gender: "女" },
+            { id: 20, name: "吳涵儒", gender: "女" },
+            { id: 21, name: "洪楀晴", gender: "女" },
+            { id: 22, name: "林芷萱", gender: "女" },
+            { id: 23, name: "潘若穎", gender: "女" },
+            { id: 24, name: "焉語霓", gender: "女" },
+            { id: 25, name: "蘇唯心", gender: "女" }
         ];
 
-        // 初始化生成預設學生
-        function initStudents() {
-            const count = parseInt(document.getElementById('student-count').value) || 26;
-            studentData = [];
-            for (let i = 1; i <= count; i++) {
-                const name = defaultNames[(i - 1) % defaultNames.length];
-                const gender = (i % 2 === 0) ? '女' : '男';
-                studentData.push({ id: i, name: name, gender: gender });
+        // 狀態管理：記錄每個座位格放了哪位學生的 id (null 代表空位)
+        let seatAssignments = {}; // e.g. { 'seat-0': 1, 'seat-1': null }
+        // 記錄哪些學生目前在待命區中
+        let unassignedStudents = [];
+
+        function initApp() {
+            unassignedStudents = initialStudents.map(s => s.id);
+            seatAssignments = {};
+            for (let i = 0; i < 25; i++) {
+                seatAssignments[`seat-${i}`] = null;
             }
-            renderInputs();
-            renderSeats();
+            renderClassroom();
         }
 
-        // 渲染左側輸入清單
-        function renderInputs() {
-            const container = document.getElementById('student-list-inputs');
-            container.innerHTML = '';
-            studentData.forEach((s, index) => {
-                const div = document.createElement('div');
-                div.className = 'flex items-center gap-1 bg-white p-1.5 rounded border border-slate-200 text-xs';
-                div.innerHTML = `
-                    <span class="w-8 font-bold text-slate-500">A${String(s.id).padStart(2, '0')}</span>
-                    <input type="text" value="${s.name}" oninput="updateStudent(${index}, 'name', this.value)" class="flex-1 border rounded px-1 py-0.5">
-                    <select onchange="updateStudent(${index}, 'gender', this.value)" class="border rounded px-1 py-0.5">
-                        <option value="男" ${s.gender === '男' ? 'selected' : ''}>男</option>
-                        <option value="女" ${s.gender === '女' ? 'selected' : ''}>女</option>
-                    </select>
-                `;
-                container.appendChild(div);
+        // 重新渲染畫面（包含待命區與固定座位網格）
+        function renderClassroom() {
+            renderStudentPool();
+            renderSeatsGrid();
+        }
+
+        // 渲染左側待命學生卡片
+        function renderStudentPool() {
+            const poolContainer = document.getElementById('student-pool');
+            document.getElementById('unassigned-count').innerText = unassignedStudents.length;
+            poolContainer.innerHTML = '';
+
+            if (unassignedStudents.length === 0) {
+                poolContainer.innerHTML = `<div class="w-full text-center text-xs text-slate-400 py-6">所有學生均已安排座位 🎉</div>`;
+                return;
+            }
+
+            unassignedStudents.forEach(studentId => {
+                const s = initialStudents.find(item => item.id === studentId);
+                const card = createStudentCardElement(s);
+                poolContainer.appendChild(card);
             });
         }
 
-        function updateStudent(index, field, value) {
-            studentData[index][field] = value;
-            renderSeats();
-        }
+        // 建立學生卡片 DOM
+        function createStudentCardElement(student) {
+            const card = document.createElement('div');
+            card.className = 'student-card cursor-grab active:cursor-grabbing bg-white border-2 border-slate-300 rounded-lg px-2.5 py-1 text-center shadow-sm hover:border-blue-500 transition text-xs flex items-center gap-1.5';
+            card.draggable = true;
+            card.dataset.studentId = student.id;
 
-        // 渲染右側座位圖塊
-        function renderSeats() {
-            const container = document.getElementById('students-container');
-            // 保留已經拖曳過的位置，如果沒有則賦予預設矩陣排列
-            const existingCards = {};
-            document.querySelectorAll('.student-seat').forEach(el => {
-                existingCards[el.dataset.id] = {
-                    left: el.style.left,
-                    top: el.style.top
-                };
+            const genderColor = student.gender === '男' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50';
+
+            card.innerHTML = `
+                <span class="text-[10px] font-bold text-slate-400">${student.id}</span>
+                <span class="font-bold text-slate-800">${student.name}</span>
+                <span class="text-[9px] px-1 rounded ${genderColor}">${student.gender}</span>
+            `;
+
+            card.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'student', studentId: student.id }));
             });
 
-            container.innerHTML = '';
+            return card;
+        }
 
-            let cols = 5; // 每行5個座位
-            let startX = 80;
-            let startY = 160;
-            let gapX = 140;
-            let gapY = 85;
+        // 渲染右側固定的座位格子
+        function renderSeatsGrid() {
+            const gridContainer = document.getElementById('seats-grid-container');
+            const mode = document.getElementById('layout-mode').value;
+            const colsPerRow = parseInt(document.getElementById('cols-count').value);
 
-            studentData.forEach((s, index) => {
-                const col = index % cols;
-                const row = Math.floor(index / cols);
+            gridContainer.innerHTML = '';
 
-                const defaultLeft = startX + (col * gapX) + 'px';
-                const defaultTop = startY + (row * gapY) + 'px';
+            initialStudents.forEach((_, index) => {
+                const seatKey = `seat-${index}`;
+                const assignedStudentId = seatAssignments[seatKey];
+                const assignedStudent = assignedStudentId ? initialStudents.find(s => s.id === assignedStudentId) : null;
 
-                const pos = existingCards[s.id] || { left: defaultLeft, top: defaultTop };
+                const slot = document.createElement('div');
+                slot.className = `seat-slot border-2 border-dashed border-slate-400 bg-white/70 rounded-xl p-2 flex flex-col items-center justify-center transition-all h-[75px] ${mode === 'paired' ? 'w-[105px]' : 'w-[95px]'}`;
+                slot.dataset.seatKey = seatKey;
 
-                const card = document.createElement('div');
-                card.className = 'seat-card student-seat bg-white border-2 border-slate-300 rounded-lg p-2 text-center shadow-md w-28 hover:border-blue-400 transition-colors';
-                card.dataset.id = s.id;
-                card.style.left = pos.left;
-                card.style.top = pos.top;
+                // Drag & Drop 事件處理
+                slot.addEventListener('dragover', allowDrop);
+                slot.addEventListener('drop', (e) => dropToSeat(e, seatKey));
 
-                const genderColor = s.gender === '男' ? 'text-blue-600' : 'text-rose-600';
+                if (assignedStudent) {
+                    slot.classList.remove('border-dashed', 'bg-white/70');
+                    slot.classList.add('border-solid', 'border-blue-400', 'bg-white', 'shadow-sm');
 
-                card.innerHTML = `
-                    <div class="text-[10px] font-semibold text-slate-400">A${String(s.id).padStart(2, '0')}</div>
-                    <div class="text-xs font-bold text-slate-800 truncate">${s.name}</div>
-                    <div class="text-[10px] ${genderColor}">${s.gender}</div>
-                `;
+                    const genderColor = assignedStudent.gender === '男' ? 'text-blue-600 bg-blue-50' : 'text-rose-600 bg-rose-50';
 
-                makeDraggable(card);
-                container.appendChild(card);
+                    slot.innerHTML = `
+                        <div class="w-full flex justify-between items-center px-1 mb-0.5">
+                            <span class="text-[9px] font-bold text-slate-400">座位 ${index + 1}</span>
+                            <span class="text-[8px] px-1 rounded ${genderColor} font-semibold">${assignedStudent.gender}</span>
+                        </div>
+                        <div class="text-xs font-bold text-slate-800 truncate">${assignedStudent.name}</div>
+                        <div class="text-[9px] text-slate-400 hover:text-rose-500 cursor-pointer mt-0.5" onclick="removeStudentFromSeat('${seatKey}')">❌ 移出</div>
+                    `;
+                    // 讓已入座的卡片也能再次被拖曳調換
+                    slot.draggable = true;
+                    slot.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'seat', seatKey: seatKey, studentId: assignedStudent.id }));
+                    });
+                } else {
+                    slot.innerHTML = `
+                        <div class="text-[10px] font-bold text-slate-400 mb-0.5">座位 ${index + 1}</div>
+                        <div class="text-[11px] text-slate-400 italic">拖入學生</div>
+                    `;
+                }
+
+                gridContainer.appendChild(slot);
             });
         }
 
-        // 重新排列（重設回整齊陣列）
-        function resetLayout() {
-            // 重置導師桌位置
-            const teacherSeat = document.getElementById('teacher-seat');
-            teacherSeat.style.left = '50px';
-            teacherSeat.style.top = '80px';
-            renderSeats();
+        // 拖曳相關函式
+        function allowDrop(e) {
+            e.preventDefault();
         }
 
-        // 點擊按鈕確認生成
-        function generateSeats() {
-            initStudents();
+        function dropToSeat(e, targetSeatKey) {
+            e.preventDefault();
+            const dataText = e.dataTransfer.getData('text/plain');
+            if (!dataText) return;
+            const data = JSON.parse(dataText);
+
+            // 如果原本該座位有其他人，先釋放
+            const existingStudentInSeat = seatAssignments[targetSeatKey];
+
+            if (data.type === 'student') {
+                // 從待命區拖入
+                const studentId = data.studentId;
+                // 從待命清單移除
+                unassignedStudents = unassignedStudents.filter(id => id !== studentId);
+                // 如果目標座位原本有人，將其放回待命區
+                if (existingStudentInSeat) {
+                    unassignedStudents.push(existingStudentInSeat);
+                }
+                seatAssignments[targetSeatKey] = studentId;
+            } else if (data.type === 'seat') {
+                // 從另一個座位拖過來調換
+                const originSeatKey = data.seatKey;
+                const studentId = data.studentId;
+
+                seatAssignments[originSeatKey] = existingStudentInSeat;
+                seatAssignments[targetSeatKey] = studentId;
+            }
+
+            renderClassroom();
         }
 
-        // 拖曳功能實作 (支援滑鼠與觸控)
-        function makeDraggable(elmnt) {
-            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-            elmnt.onmousedown = dragMouseDown;
+        function dropToPool(e) {
+            e.preventDefault();
+            const dataText = e.dataTransfer.getData('text/plain');
+            if (!dataText) return;
+            const data = JSON.parse(dataText);
 
-            function dragMouseDown(e) {
-                e.preventDefault();
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-                document.onmouseup = closeDragElement;
-                document.onmousemove = elementDrag;
-                // 提高被拖曳圖塊的層級
-                elmnt.style.zIndex = 1000;
-            }
-
-            function elementDrag(e) {
-                e.preventDefault();
-                pos1 = pos3 - e.clientX;
-                pos2 = pos4 - e.clientY;
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-
-                const canvas = document.getElementById('classroom-canvas');
-                const rect = canvas.getBoundingClientRect();
-
-                let newTop = elmnt.offsetTop - pos2;
-                let newLeft = elmnt.offsetLeft - pos1;
-
-                // 限制在畫布範圍內
-                if (newTop < 0) newTop = 0;
-                if (newLeft < 0) newLeft = 0;
-                if (newTop + elmnt.offsetHeight > canvas.clientHeight) newTop = canvas.clientHeight - elmnt.offsetHeight;
-                if (newLeft + elmnt.offsetWidth > canvas.clientWidth) newLeft = canvas.clientWidth - elmnt.offsetWidth;
-
-                elmnt.style.top = newTop + "px";
-                elmnt.style.left = newLeft + "px";
-            }
-
-            function closeDragElement() {
-                document.onmouseup = null;
-                document.onmousemove = null;
-                elmnt.style.zIndex = 1;
+            if (data.type === 'seat') {
+                const seatKey = data.seatKey;
+                const studentId = data.studentId;
+                if (seatAssignments[seatKey] === studentId) {
+                    seatAssignments[seatKey] = null;
+                    if (!unassignedStudents.includes(studentId)) {
+                        unassignedStudents.push(studentId);
+                    }
+                }
+                renderClassroom();
             }
         }
 
-        // 讓導師桌也能拖曳
-        makeDraggable(document.getElementById('teacher-seat'));
+        function removeStudentFromSeat(seatKey) {
+            const studentId = seatAssignments[seatKey];
+            if (studentId) {
+                seatAssignments[seatKey] = null;
+                if (!unassignedStudents.includes(studentId)) {
+                    unassignedStudents.push(studentId);
+                }
+                renderClassroom();
+            }
+        }
+
+        function returnAllToPool() {
+            initApp();
+        }
+
+        function resetAllSeats() {
+            initApp();
+        }
+
+        // 導師桌拖曳支援
+        function dragTeacher(e) {
+            // 導師桌自由拖曳
+        }
+
+        const teacherEl = document.getElementById('teacher-seat');
+        let isDraggingTeacher = false;
+        let startX, startY;
+
+        teacherEl.addEventListener('mousedown', (e) => {
+            isDraggingTeacher = true;
+            startX = e.clientX - teacherEl.offsetLeft;
+            startY = e.clientY - teacherEl.offsetTop;
+            teacherEl.style.zIndex = 100;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDraggingTeacher) return;
+            const canvas = document.getElementById('classroom-canvas');
+            let newX = e.clientX - startX;
+            let newY = e.clientY - startY;
+
+            if (newX < 10) newX = 10;
+            if (newY < 50) newY = 50;
+            if (newX + teacherEl.offsetWidth > canvas.clientWidth - 10) newX = canvas.clientWidth - teacherEl.offsetWidth - 10;
+            if (newY + teacherEl.offsetHeight > canvas.clientHeight - 10) newY = canvas.clientHeight - teacherEl.offsetHeight - 10;
+
+            teacherEl.style.left = newX + 'px';
+            teacherEl.style.top = newY + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDraggingTeacher = false;
+            teacherEl.style.zIndex = 10;
+        });
 
         // 匯出圖片功能
         function exportImage() {
             const canvasElement = document.getElementById('classroom-canvas');
-            html2canvas(canvasElement, { scale: 2 }).then(canvas => {
+            html2canvas(canvasElement, { scale: 2, useCORS: true }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = '教室座位圖.png';
+                link.download = '教室固定座位配置圖.png';
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             });
         }
 
-        // 網頁載入時初始化
         window.onload = function() {
-            initStudents();
+            initApp();
         };
     </script>
 </body>
